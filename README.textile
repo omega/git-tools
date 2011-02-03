@@ -1,0 +1,38 @@
+h1. Git tools
+
+A collection of scripts to help with managing a large number of github repos
+
+h2. Config
+
+The config-file github_tools_local.yml should be created, and you can add the following
+options to it:
+
+* user - github username
+* token - your github token
+* org - The organization you want the scripts to run on
+
+h1. Tools
+
+h2. grants
+
+This tool shows you teams horizontally, repos vertically, and the matrix shows a X
+when a team has access to a repo. It's meant to visualize grants, so it is easier
+to maintain than the github version.
+
+h1. Bad tools
+
+h2. merge, extract, push
+
+All of theese need manual editing to be even close to usable, no config or anything
+
+h3. merge
+
+Merges one or more git repos into current directory. Needs editing for now
+
+h3. extract
+
+Extracts sub folders of a git repo into individual repos
+
+h3. push
+
+Pushes a large number of repos, creating them if needed

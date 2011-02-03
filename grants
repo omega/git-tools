@@ -1,0 +1,57 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use GitHub::Tools::Config
+    config => { -as => 'c' };
+use Data::Dump;
+use Carp;
+use Net::HTTP::Spore;
+use Try::Tiny;
+use Text::SimpleTable::AutoWidth;
+
+use feature ':5.10';
+my $table = Text::SimpleTable::AutoWidth->new();
+my $g = Net::HTTP::Spore->new_from_spec(
+    '../../other/spore-descriptions/services/github/organization.json',
+    base_url => 'http://github.com/api/v2/'
+);
+$g->enable('Format::JSON');
+$g->enable('Auth::Basic',
+    username => c('user') . '/token',
+    password => c 'token'
+);
+
+my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
+my @teams = grep { $_->{name} ne 'Owners' } @{ $teams->{teams} };
+{
+    foreach my $t (@teams) {
+        $t->{repos} = $g->get_team_repositories(format => 'json', team => $t->{id})->body;
+    }
+}
+
+$table->captions(['Repo',
+        map {
+            my $m = 11 - length($_);
+            my $d = int($m / 2);
+            " "x(($m % 2) ? $d + 1 : $d) . $_ . " "x($d)
+        }
+        map { substr($_->{name}, - 11) }
+        @teams
+    ]);
+my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
+
+foreach my $r (@{ $repos->{repositories}}) {
+    my @row = ($r->{name});
+
+    foreach my $t (@teams) {
+        if (grep { $row[0] eq $_->{name}} @{ $t->{repos}->{repositories}} ) {
+            push @row, "     X";
+        } else {
+            push @row, " ";
+        }
+    }
+
+    $table->row(@row);
+}
+
+say $table->draw;
