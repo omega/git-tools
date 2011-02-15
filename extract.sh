@@ -1,9 +1,13 @@
 #!/bin/sh
-
-for i in `ls data-collectors`; do
+DIR=$1
+if [ -z "$DIR" ]; then
+    echo "No dir specified"
+    exit 1;
+fi
+for i in `ls $DIR`; do
     li=`echo ${i} | tr '[A-Z]' '[a-z]'`
     echo " --->>> $i -- $li"
-    cd data-collectors
+    cd $DIR
     git branch -D extract
     git branch extract
     git filter-branch -f --subdirectory-filter $i extract
@@ -11,6 +15,6 @@ for i in `ls data-collectors`; do
     mkdir $li
     cd $li
      git init
-     git pull ../data-collectors extract
+     git pull ../$DIR extract
      cd ..
 done

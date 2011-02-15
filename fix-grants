@@ -1,0 +1,30 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use GitHub::Tools::Common;
+use Data::Dump;
+use Carp;
+use Net::HTTP::Spore;
+use Try::Tiny;
+use Text::SimpleTable::AutoWidth;
+use Data::Dump;
+use feature ':5.10';
+
+my $g = api();
+
+# Lets add all repos to Employees tema
+my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
+my ($team) = grep { $_->{name} eq 'Employees' } @{ $teams->{teams} };
+
+say "team: " . $team->{id} . " -- " . $team->{name};
+
+my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
+
+foreach my $r ( @{ $repos->{repositories} } ) {
+    say "adding " . $r->{name};
+    my $res = $g->add_team_repo(format => 'json', team => $team->{id},
+        repo => $r->{organization} . '/' . $r->{name}
+    )->body;
+    say dd $res;
+    last;
+}

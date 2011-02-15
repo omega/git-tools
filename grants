@@ -1,8 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use GitHub::Tools::Config
-    config => { -as => 'c' };
+use GitHub::Tools::Common;
 use Data::Dump;
 use Carp;
 use Net::HTTP::Spore;
@@ -11,15 +10,8 @@ use Text::SimpleTable::AutoWidth;
 
 use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
-my $g = Net::HTTP::Spore->new_from_spec(
-    '../../other/spore-descriptions/services/github/organization.json',
-    base_url => 'http://github.com/api/v2/'
-);
-$g->enable('Format::JSON');
-$g->enable('Auth::Basic',
-    username => c('user') . '/token',
-    password => c 'token'
-);
+
+my $g = api();
 
 my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
 my @teams = grep { $_->{name} ne 'Owners' } @{ $teams->{teams} };
@@ -40,7 +32,7 @@ $table->captions(['Repo',
     ]);
 my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
 
-foreach my $r (@{ $repos->{repositories}}) {
+foreach my $r (sort { $a->{name} cmp $b->{name} } @{ $repos->{repositories}}) {
     my @row = ($r->{name});
 
     foreach my $t (@teams) {

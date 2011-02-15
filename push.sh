@@ -1,5 +1,4 @@
 #!/bin/sh
-
 for i in `find . -type d -depth 1 -not -name '.*'`; do
     echo "pushing $i"
     i=`basename $i`
