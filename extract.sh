@@ -1,10 +1,16 @@
 #!/bin/sh
 DIR=$1
+EXTRACT=$2
 if [ -z "$DIR" ]; then
     echo "No dir specified"
     exit 1;
 fi
-for i in `ls $DIR`; do
+FILES=`ls $DIR`
+if [ -n "$EXTRACT" ]; then
+    FILES="$EXTRACT"
+fi
+echo "  Extracting: $FILES"
+for i in `echo $FILES`; do
     li=`echo ${i} | tr '[A-Z]' '[a-z]'`
     echo " --->>> $i -- $li"
     cd $DIR
@@ -14,7 +20,7 @@ for i in `ls $DIR`; do
     cd ..
     mkdir $li
     cd $li
-     git init
-     git pull ../$DIR extract
-     cd ..
+    git init
+    git pull ../$DIR extract
+    cd ..
 done
