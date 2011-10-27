@@ -23,6 +23,8 @@ my $repos = $g->get_organization_repositories(format => 'json', org => 'startsid
 my $i = 0;
 foreach my $r (sort { $a->{name} cmp $b->{name} } @{ $repos->{repositories}}) {
     my @row = ($r->{name});
+    next if $r->{name} eq 'sandbox';
+
     my @res = check_repo_hooks($g, $r, $hooks);
     foreach (@res) {
         if ($_ == 1) {
@@ -62,9 +64,8 @@ sub check_repo_hooks {
         my ($tok) = ($res->content =~ m|<input name="authenticity_token" type="hidden" value="(.*?)" />|);
         my $form = ['authenticity_token', $tok];
         foreach (values(%$hooks)) {
-            push(@$form, "urls[]", $_);
+            push(@$form, "web_hook[new][][url]", $_);
         }
-
         my $res = post($url . '/postreceive_urls', $form);
         if ($res->is_success() || $res->is_redirect) {
             warn "added to " . $repo->{name};
