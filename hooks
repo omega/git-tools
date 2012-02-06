@@ -17,14 +17,23 @@ our $add = 0;
 if ($ARGV[0]) {
     $add = 1;
 }
+my $repos;
 my $g = api();
 
-my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
+if ($ARGV[1]) {
+    say "Only checking one repo: " . $ARGV[1];
+    push( @$repos, { name => $ARGV[1] } );
+} else {
+    $repos = $g->list_org_repos(org => 'startsiden')->body;
+}
+
 my $i = 0;
-foreach my $r (sort { $a->{name} cmp $b->{name} } @{ $repos->{repositories}}) {
+
+foreach my $r (sort { $a->{name} cmp $b->{name} } @$repos) {
     my @row = ($r->{name});
     next if $r->{name} eq 'sandbox';
 
+    say "REPO: " . $r->{name};
     my @res = check_repo_hooks($g, $r, $hooks);
     foreach (@res) {
         if ($_ == 1) {
@@ -46,32 +55,50 @@ sub check_repo_hooks {
     my ($api, $repo, $hooks) = @_;
     my @res;
     # Fetch the content first!
-    my $url = $repo->{url} . "/admin";
-    my $res = get($url);
+    my $repo_hooks = $g->list_repo_hooks(user => 'startsiden', repo => $repo->{name})->body;
 
-    my @missing;
+
     foreach (values(%$hooks)) {
-        if ($res->content =~ m|$_|) {
-            push(@res, 1);
-        } elsif ($add) {
-            push(@res, 2);
-            push(@missing, $_);
-        } else {
-            push(@res, 0);
+        #say " $_";
+        # Check if we have this one
+        my $seen;
+        foreach my $h (@$repo_hooks) {
+            next unless ($h->{name} eq 'web'); # We only look at web hooks for now
+            #say "    " . $h->{config}->{url};
+            if ($h->{config}->{url} =~ qr/$_/) {
+                $seen = 1;
+                # now lets check for repo name
+                unless ($h->{config}->{url} =~ qr/$repo->{name}/) {
+                    # Need to update this one.
+                    say "      Adding repo name!";
+                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
+                        id => $h->{id},
+                        spore_payload => {
+                            name => 'web',
+                            config => {
+                                %{ $h->{config} },
+                                url => $h->{config}->{url} . "?x-repo=" . $repo->{name}
+                            },
+                        }
+                    );
+                }
+                last;
+            }
         }
-    }
-    if (scalar(@missing) > 0) {
-        my ($tok) = ($res->content =~ m|<input name="authenticity_token" type="hidden" value="(.*?)" />|);
-        my $form = ['authenticity_token', $tok];
-        foreach (values(%$hooks)) {
-            push(@$form, "web_hook[new][][url]", $_);
+        unless ($seen) {
+            # Need to add a hook then!
+            say "    Adding hook!";
+            $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
+                spore_payload => {
+                    name => 'web',
+                    config => {
+                        url => $_ . "?x-repo=" . $repo->{name},
+                    }
+                }
+            );
+            $seen = 2;
         }
-        my $res = post($url . '/postreceive_urls', $form);
-        if ($res->is_success() || $res->is_redirect) {
-            warn "added to " . $repo->{name};
-        } else {
-            die "Error adding post recieve_urls: " . $res->content;
-        }
+        push(@res, $seen);
     }
     return @res;
 }

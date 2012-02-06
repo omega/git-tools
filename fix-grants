@@ -13,33 +13,42 @@ use feature ':5.10';
 my %skip = (
     'candidate-code' => 1,
     'apdm-candidate-code' => 1,
+    'giza2-templates-startsiden-base' => 1,
+    'giza2-templates-startsiden-nettspill' => 1,
 );
 my $g = api();
 
 # Lets add all repos to Employees tema
+my $repos;
+if ($ARGV[0]) {
+    push(@$repos, { name => shift, organization => 'startsiden' });
+} else {
+    $repos = $g->list_org_repos(org => 'startsiden')->body;
+}
+
 my $TEAMS = [shift || qw(Employees Bots)];
 foreach my $TN (@$TEAMS) {
-    my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
-    my ($team) = grep { $_->{name} eq $TN } @{ $teams->{teams} };
+    my $teams = $g->list_org_teams(org => 'startsiden')->body;
+    my ($team) = grep { $_->{name} eq $TN } @$teams;
 
     die "no such team $TN found (found: "
-    . join(", ", map { $_->{name} } @{ $teams->{teams} })
+    . join(", ", map { $_->{name} } @$teams)
     . ")\n" unless $team;
     say "team: " . $team->{id} . " -- " . $team->{name};
 
-    $team->{repos} = $g->get_team_repositories(format => 'json', team => $team->{id})->body;
-    my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
+    $team->{repos} = $g->list_team_repos(team => $team->{id})->body;
 
-    foreach my $r ( @{ $repos->{repositories} } ) {
-        next if (grep { $r->{name} eq $_->{name} } @{ $team->{repos}->{repositories} });
+    foreach my $r ( @$repos) {
+        next if (grep { $r->{name} eq $_->{name} } @{ $team->{repos} });
         next if ($skip{$r->{name}});
         say $r->{name};
 
         say "   adding";
-        my $res = $g->add_team_repo(format => 'json', team => $team->{id},
-            payload => {
-                name => $r->{organization} . '/' . $r->{name},
-            }
+        my $res = $g->add_team_repo(
+            team => $team->{id},
+            user => $r->{owner}->{login},
+            repo => $r->{name},
+            spore_payload => { },
         )->body;
         say dd $res if $ENV{SPORE_TRACE};
     }

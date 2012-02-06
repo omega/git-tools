@@ -18,13 +18,16 @@ sub config($) {
 our $api;
 sub api {
     return $api if $api;
-    my $g = Net::HTTP::Spore->new_from_spec(
-        '../../other/spore-descriptions/services/github/organization.json',
-        base_url => 'http://github.com/api/v2/'
+    my $g = Net::HTTP::Spore->new_from_specs(
+        '../../other/spore-descriptions/services/github/org3.json',
+        '../../other/spore-descriptions/services/github/repo3.json',
+        {
+            #base_url => 'http://github.com/api/v2/',
+        },
     );
     $g->enable('Format::JSON');
     $g->enable('Auth::Basic',
-        username => config('user') . '/token',
+        username => config('user') . '',
         password => config 'token'
     );
 
@@ -45,7 +48,7 @@ sub _mangle_req {
     my $req = shift;
     $req->header(
         'Authorization' => 'Basic ' . MIME::Base64::encode(
-            config('user') . '/token:' . config('token'), ''
+            config('user') . ':' . config('token'), ''
         )
     );
     return $req;
