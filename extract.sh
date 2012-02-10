@@ -1,6 +1,7 @@
 #!/bin/sh
 DIR=$1
-EXTRACT=$2
+shift;
+EXTRACT="$*"
 if [ -z "$DIR" ]; then
     echo "No dir specified"
     exit 1;
