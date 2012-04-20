@@ -3,10 +3,11 @@ package GitHub::Tools::Common;
 use HTTP::Request::Common;
 
 use Config::ZOMG;
+use feature ':5.10';
 
 use Sub::Exporter -setup => {
-    exports => [ qw/config api get post/ ],
-    groups => [ default => [ qw(config api get post) ] ],
+    exports => [ qw/config api get post iterate_repos/ ],
+    groups => [ default => [ qw(config api get post iterate_repos) ] ],
 };
 
 my $c = Config::ZOMG->new( name => 'github_tools' )->load;
@@ -68,5 +69,23 @@ sub post {
     my $req = _mangle_req(POST $url, $form );
     return $ua->request($req);
 }
+
+
+sub iterate_repos {
+    my ($org, $cb) = @_;
+    api() unless $api; # Need to have api inited;
+    my $repos;
+    if ($ARGV[0]) {
+        push( @$repos, { name => $ARGV[0] } );
+    } else {
+        $repos = $api->list_org_repos(org => $org)->body;
+    }
+    foreach my $r (sort { $a->{name} cmp $b->{name} } @$repos) {
+        next if $r->{name} eq 'sandbox';
+        $cb->($r);
+    }
+}
+
+
 
 1;

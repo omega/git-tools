@@ -14,40 +14,32 @@ my $hooks = config 'hooks';
 
 $table->captions(['Repo', keys %$hooks ]);
 our $add = 0;
-if ($ARGV[0]) {
-    $add = 1;
+if ($ARGV[1]) {
+    $add = shift;
 }
-my $repos;
 my $g = api();
 
-if ($ARGV[1]) {
-    say "Only checking one repo: " . $ARGV[1];
-    push( @$repos, { name => $ARGV[1] } );
-} else {
-    $repos = $g->list_org_repos(org => 'startsiden')->body;
-}
-
 my $i = 0;
+iterate_repos('startsiden', sub {
+        my $r = shift;
+        my @row = ($r->{name});
 
-foreach my $r (sort { $a->{name} cmp $b->{name} } @$repos) {
-    my @row = ($r->{name});
-    next if $r->{name} eq 'sandbox';
-
-    say "REPO: " . $r->{name};
-    my @res = check_repo_hooks($g, $r, $hooks);
-    foreach (@res) {
-        if ($_ == 1) {
-            push(@row, 'X');
-        } elsif ($_ == 2) {
-            push(@row, '+');
-        } else {
-            push(@row, ' ');
+        say "REPO: " . $r->{name};
+        my @res = check_repo_hooks($g, $r, $hooks);
+        foreach (@res) {
+            if ($_ == 1) {
+                push(@row, 'X');
+            } elsif ($_ == 2) {
+                push(@row, '+');
+            } else {
+                push(@row, ' ');
+            }
         }
-    }
 
-    $table->row(@row);
-    #last if $i++ > 1;
-}
+        $table->row(@row);
+        #last if $i++ > 1;
+    }
+);
 
 say $table->draw();
 
@@ -76,9 +68,19 @@ sub check_repo_hooks {
                         spore_payload => {
                             name => 'web',
                             config => {
-                                %{ $h->{config} },
                                 url => $h->{config}->{url} . "?x-repo=" . $repo->{name}
                             },
+                        }
+                    );
+                } else {
+                    # Lets clean up config?
+                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
+                        id => $h->{id},
+                        spore_payload => {
+                            name => 'web',
+                            config => {
+                                url => $h->{config}->{url},
+                            }
                         }
                     );
                 }
@@ -87,7 +89,7 @@ sub check_repo_hooks {
         }
         unless ($seen) {
             # Need to add a hook then!
-            say "    Adding hook!";
+            say "    Adding hook: $_";
             $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
                 spore_payload => {
                     name => 'web',
@@ -102,3 +104,4 @@ sub check_repo_hooks {
     }
     return @res;
 }
+
