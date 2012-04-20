@@ -1,0 +1,75 @@
+#!/usr/bin/env perl
+
+=for oauth2
+
+HTTP/1.1 201 Created
+Server: nginx/1.0.13
+Date: Wed, 18 Apr 2012 13:26:57 GMT
+Content-Type: application/json; charset=utf-8
+Connection: keep-alive
+Status: 201 Created
+X-RateLimit-Limit: 5000
+ETag: "ae648e7cc24aa543eee65e405461b70e"
+Location: https://api.github.com/authorizations/313682
+X-RateLimit-Remaining: 4996
+Content-Length: 415
+
+{
+  "scopes": [
+    "repo"
+  ],
+  "created_at": "2012-04-18T13:26:57Z",
+  "note_url": null,
+  "token": "b733b515c461114e8ea55e084acb065ec27cc509",
+  "app": {
+    "url": "http://developer.github.com/v3/oauth/#oauth-authorizations-api",
+    "name": "nagios checks (API)"
+  },
+  "url": "https://api.github.com/authorizations/313682",
+  "note": "nagios checks",
+  "id": 313682,
+  "updated_at": "2012-04-18T13:26:57Z"
+}
+
+=cut
+
+
+use strict;
+use warnings;
+
+use GitHub::Tools::Common;
+use Net::HTTP::Spore;
+use Data::Dump qw/dump/;
+use feature ':5.10';
+
+my $g = api();
+my $failed = 0;
+iterate_repos('startsiden', sub {
+        my $r = shift;
+
+        my $hooks = $g->list_repo_hooks(user => 'startsiden', repo => $r->{name})->body;
+        foreach my $h (@$hooks) {
+            my $last_resp = $h->{last_response};
+            if (!$last_resp->{code} and $last_resp->{status} ne 'unused') {
+                warn "No last_resp? " . dump($h);
+            } elsif($last_resp->{status} eq 'unused') {
+                # just not used yet
+            } elsif ($last_resp->{code} != 200) {
+                my $hook = '';
+                if ($h->{name} eq 'web') {
+                    $hook = $h->{config}->{url};
+                } elsif ($h->{name} eq 'irc') {
+                    $hook = "irc://" . join(":", grep {$_} values %{$h->{config} });
+                }
+                say $r->{name} . " ($hook) => " . " :: " . $last_resp->{code} . ": "
+                . $last_resp->{message};
+                $failed++;
+            }
+        }
+    }
+);
+
+if ($failed) {
+    warn "FAILED $failed repo hooks\n";
+    exit(1);
+}
