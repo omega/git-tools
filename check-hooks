@@ -50,10 +50,10 @@ iterate_repos('startsiden', sub {
         my $r = shift;
         try {
             # XXX: OMG This is lazy exception handling! :p
-            #say "repo: " . $r->{name};
+            say "repo: " . $r->{name} if $ENV{DEBUG};
             my $hooks = $g->list_repo_hooks(user => 'startsiden', repo => $r->{name})->body;
             foreach my $h (@$hooks) {
-                #warn dump($h);
+                warn dump($h) if $ENV{DEBUG};
                 my $last_resp = $h->{last_response};
                 if ($last_resp->{status} and $last_resp->{status} eq 'unused') {
                     # lets fire it and check
