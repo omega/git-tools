@@ -7,19 +7,21 @@ use Carp;
 use Net::HTTP::Spore;
 use Try::Tiny;
 use Text::SimpleTable::AutoWidth;
+use Scalar::Util;
+use YAML::XS qw/DumpFile LoadFile/;
 
 use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 my $hooks = config 'hooks';
 
-$table->captions(['Repo', keys %$hooks ]);
-our $add = 0;
-if ($ARGV[1]) {
-    $add = shift;
-}
+$table->captions(['Repo', keys %$hooks, 'IRC' ]);
+
 my $g = api();
 
 my $i = 0;
+
+my $irc_rooms = LoadFile("ircrooms.yaml");
+
 iterate_repos('startsiden', sub {
         my $r = shift;
         my @row = ($r->{name});
@@ -35,6 +37,7 @@ iterate_repos('startsiden', sub {
                 push(@row, ' ');
             }
         }
+        push(@row, $irc_rooms->{$r->{name}} || '');
 
         $table->row(@row);
         #last if $i++ > 1;
@@ -43,21 +46,23 @@ iterate_repos('startsiden', sub {
 
 say $table->draw();
 
+DumpFile("ircrooms.yaml", $irc_rooms);
+
 sub check_repo_hooks {
     my ($api, $repo, $hooks) = @_;
     my @res;
     # Fetch the content first!
     my $repo_hooks = $g->list_repo_hooks(user => 'startsiden', repo => $repo->{name})->body;
 
+    $irc_rooms->{$repo->{name}} = '' unless $irc_rooms->{$repo->{name}};
 
     foreach (values(%$hooks)) {
         #say " $_";
         # Check if we have this one
-        my $seen;
+        my ($seen, $ircseen);
         foreach my $h (@$repo_hooks) {
-            next unless ($h->{name} eq 'web'); # We only look at web hooks for now
             #say "    " . $h->{config}->{url};
-            if ($h->{config}->{url} =~ qr/$_/) {
+            if ($h->{name} eq 'web' and $h->{config}->{url} =~ qr/$_/) {
                 $seen = 1;
                 # now lets check for repo name
                 unless ($h->{config}->{url} =~ qr/$repo->{name}/) {
@@ -84,8 +89,29 @@ sub check_repo_hooks {
                         }
                     );
                 }
-                last;
+            } elsif ($h->{name} eq 'irc') {
+                $ircseen++;
+                $irc_rooms->{$repo->{name}} = $h->{config}->{room} if $h->{config}->{room};
+                if (not $h->{config}->{no_colors} or not $h->{config}->{room}) {
+                    my $room = $irc_rooms->{$repo->{name}} || $h->{config}->{room};
+                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
+                        id => $h->{id},
+                        spore_payload => {
+                            name => 'irc',
+                            config => {
+                                no_colors => 1,
+                                nick => 'github_ss',
+                                port => 6667,
+                                server => "sausage.startsiden.no",
+                                room => $room,
+                            },
+                        },
+                    ) if $room;
+                } else {
+                    say $repo->{name} . " Set no_colors";
+                }
             }
+
         }
         unless ($seen) {
             # Need to add a hook then!
@@ -100,8 +126,24 @@ sub check_repo_hooks {
             );
             $seen = 2;
         }
+        if (not $ircseen and $irc_rooms->{$repo->{name}}) {
+            say "    Adding IRC hook, since not added, but have channel name";
+            $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
+                spore_payload => {
+                    name => 'irc',
+                    config => {
+                        room => $irc_rooms->{$repo->{name}},
+                        nick => 'github_ss',
+                        port => 6667,
+                        server => "sausage.startsiden.no",
+                        no_colors => 1,
+                    },
+                },
+            );
+        }
         push(@res, $seen);
     }
     return @res;
 }
+
 
