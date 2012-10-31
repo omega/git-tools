@@ -75,8 +75,8 @@ sub iterate_repos {
     my ($org, $cb) = @_;
     api() unless $api; # Need to have api inited;
     my $repos;
-    if ($ARGV[0]) {
-        push( @$repos, { name => $ARGV[0] } );
+    if (scalar(@ARGV)) {
+        push( @$repos, { name => shift @ARGV } ) while scalar(@ARGV);
     } else {
         $repos = $api->list_org_repos(org => $org)->body;
     }

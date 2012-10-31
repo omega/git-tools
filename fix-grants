@@ -20,8 +20,8 @@ my $g = api();
 
 # Lets add all repos to Employees tema
 my $repos;
-if ($ARGV[0]) {
-    push(@$repos, { name => shift, owner => {login => 'startsiden'} });
+if (scalar(@ARGV)) {
+    push(@$repos, { name => shift, owner => {login => 'startsiden'} }) while scalar(@ARGV);
 } else {
     $repos = $g->list_org_repos(org => 'startsiden')->body;
 }
