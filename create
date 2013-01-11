@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use GitHub::Tools::Common;
+use Data::Dump;
+use Carp;
+use Net::HTTP::Spore;
+use Try::Tiny;
+use Text::SimpleTable::AutoWidth;
+use Scalar::Util;
+use YAML::XS qw/DumpFile LoadFile/;
+
+use feature ':5.10';
+
+
+my $g = api();
+
+my $name = $ARGV[0] or die "No name given, cannot create";
+
+say "creating: $name";
+
+$g->add_org_repo(org => 'startsiden', spore_payload => {
+        name => $name,
+        private => 1,
+        has_issues => 0,
+        has_wiki => 0,
+    }) &&
+system("./hooks $name") == 0 &&
+system("./fix-grants $name") == 0 &&
+
+say "repo creation done!";
