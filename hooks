@@ -13,6 +13,7 @@ use YAML::XS qw/DumpFile LoadFile/;
 use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 my $hooks = config 'hooks';
+my $events = config 'events';
 
 $table->captions(['Repo', keys %$hooks, 'IRC' ]);
 
@@ -56,60 +57,36 @@ sub check_repo_hooks {
 
     $irc_rooms->{$repo->{name}} = '' unless $irc_rooms->{$repo->{name}};
 
-    foreach (values(%$hooks)) {
-        #say " $_";
+    foreach my $hookname (keys(%$hooks)) {
+        $_ = $hooks->{$hookname};
+        say " $_" if $ENV{DEBUG};
         # Check if we have this one
         my ($seen, $ircseen);
+        my $hook_events = $events->{$hookname} || [qw(push)];
         foreach my $h (@$repo_hooks) {
-            #say "    " . $h->{config}->{url};
             if ($h->{name} eq 'web' and $h->{config}->{url} =~ qr/$_/) {
+                say "    " . $h->{config}->{url} if $ENV{DEBUG};
                 $seen = 1;
-                # now lets check for repo name
-                unless ($h->{config}->{url} =~ qr/$repo->{name}/) {
+                # now lets check for events
+                if (
+                    scalar(@$hook_events)
+                    and join(",", sort @{ $h->{events} }) ne join(",", sort @$hook_events)
+                ) {
                     # Need to update this one.
-                    say "      Adding repo name!";
+                    say "      Events differ, lets update!";
                     $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
                         id => $h->{id},
                         spore_payload => {
                             name => 'web',
+                            events => $hook_events,
                             config => {
-                                url => $h->{config}->{url} . "?x-repo=" . $repo->{name}
+                                url => $h->{config}->{url} . "?x-repo=" . $repo->{name},
                             },
-                        }
-                    );
-                } else {
-                    # Lets clean up config?
-                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
-                        id => $h->{id},
-                        spore_payload => {
-                            name => 'web',
-                            config => {
-                                url => $h->{config}->{url},
-                            }
                         }
                     );
                 }
             } elsif ($h->{name} eq 'irc') {
                 $ircseen++;
-                $irc_rooms->{$repo->{name}} = $h->{config}->{room} if $h->{config}->{room};
-                if (not $h->{config}->{no_colors} or not $h->{config}->{room}) {
-                    my $room = $irc_rooms->{$repo->{name}} || $h->{config}->{room};
-                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
-                        id => $h->{id},
-                        spore_payload => {
-                            name => 'irc',
-                            config => {
-                                no_colors => 1,
-                                nick => 'github_ss',
-                                port => 6667,
-                                server => "sausage.startsiden.no",
-                                room => $room,
-                            },
-                        },
-                    ) if $room;
-                } else {
-                    say $repo->{name} . " Set no_colors";
-                }
             }
 
         }
@@ -119,6 +96,7 @@ sub check_repo_hooks {
             $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
                 spore_payload => {
                     name => 'web',
+                    events => $hook_events,
                     config => {
                         url => $_ . "?x-repo=" . $repo->{name},
                     }

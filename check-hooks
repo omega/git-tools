@@ -55,17 +55,17 @@ iterate_repos('startsiden', sub {
             foreach my $h (@$hooks) {
                 warn dump($h) if $ENV{DEBUG};
                 my $last_resp = $h->{last_response};
-                if ($last_resp->{status} and $last_resp->{status} eq 'unused') {
+                if ($ENV{RETEST} and $last_resp->{status} and $last_resp->{status} eq 'unused') {
                     # lets fire it and check
-                    #warn $r->{name} . ": rechecking, unused status";
+                    warn $r->{name} . ": rechecking, unused status";
                     my $test_res = $g->test_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id});
                     $h = $g->get_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id})->body;
                 }
-                if (!$last_resp->{code} and $last_resp->{status} ne 'unused') {
+                if ($last_resp->{code} and $last_resp->{code} == 200) {
+                    # All ok
+                } elsif (!$last_resp->{code} and $last_resp->{status} ne 'unused') {
                     warn "No last_resp? " . dump($h);
-                } elsif($last_resp->{status} eq 'unused') {
-                    # just not used yet
-                } elsif ($last_resp->{code} != 200) {
+                } elsif ($ENV{RETEST} and $last_resp->{code} and $last_resp->{code} != 200) {
                     # lets retry!
                     my $test_res = $g->test_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id});
                     $h = $g->get_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id})->body;
@@ -80,6 +80,8 @@ iterate_repos('startsiden', sub {
                         . $last_resp->{message};
                         $failed++;
                     }
+                } else {
+                    warn $r->{name} . " >> no idea: " . dump($last_resp);
                 }
             }
         } catch {
