@@ -4,6 +4,7 @@ use HTTP::Request::Common;
 
 use Config::ZOMG;
 use feature ':5.10';
+use Pithub::Repos;
 
 use Sub::Exporter -setup => {
     exports => [ qw/config api get post iterate_repos/ ],
@@ -73,16 +74,23 @@ sub post {
 
 sub iterate_repos {
     my ($org, $cb) = @_;
-    api() unless $api; # Need to have api inited;
-    my $repos;
+    my $skip = config 'skip';
+
     if (scalar(@ARGV)) {
-        push( @$repos, { name => shift @ARGV } ) while scalar(@ARGV);
+        while (scalar(@ARGV)) {
+            $cb->( { name => shift @ARGV } );
+        }
     } else {
-        $repos = $api->list_org_repos(org => $org)->body;
-    }
-    foreach my $r (sort { $a->{name} cmp $b->{name} } @$repos) {
-        next if $r->{name} eq 'sandbox';
-        $cb->($r);
+        my $p = Pithub::Repos->new(
+            auto_pagination => 1,
+            prepare_request => \&_mangle_req,
+        );
+
+        my $repos = $p->list(org => $org);
+        while ( my $repo = $repos->next ) {
+            next if $skip->{ $repo->{name} };
+            $cb->($repo);
+        }
     }
 }
 
