@@ -26,30 +26,31 @@ if (scalar(@ARGV)) {
     $repos = $g->list_org_repos(org => 'startsiden')->body;
 }
 
+my $teams = $g->list_org_teams(org => 'startsiden')->body;
 my $TEAMS = [shift || qw(Employees Bots)];
 foreach my $TN (@$TEAMS) {
-    my $teams = $g->list_org_teams(org => 'startsiden')->body;
     my ($team) = grep { $_->{name} eq $TN } @$teams;
+    $team->{_repos} = team_repos($team->{id});
+
 
     die "no such team $TN found (found: "
     . join(", ", map { $_->{name} } @$teams)
     . ")\n" unless $team;
     say "team: " . $team->{id} . " -- " . $team->{name};
 
-    $team->{repos} = $g->list_team_repos(team => $team->{id})->body;
+    iterate_repos('startsiden', sub {
+            my $r = shift;
+            return if (grep { $r->{name} eq $_->{name} } @{ $team->{_repos} });
+            return if ($skip{$r->{name}});
+            say $r->{name};
 
-    foreach my $r ( @$repos) {
-        next if (grep { $r->{name} eq $_->{name} } @{ $team->{repos} });
-        next if ($skip{$r->{name}});
-        say $r->{name};
-
-        say "   adding";
-        my $res = $g->add_team_repo(
-            team => $team->{id},
-            user => $r->{owner}->{login},
-            repo => $r->{name},
-            spore_payload => { },
-        )->body;
-        say dd $res if $ENV{SPORE_TRACE};
-    }
+            say "   adding";
+            my $res = $g->add_team_repo(
+                team => $team->{id},
+                user => $r->{owner}->{login},
+                repo => $r->{name},
+                spore_payload => { },
+            )->body;
+            say dd $res if $ENV{SPORE_TRACE};
+        });
 }

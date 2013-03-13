@@ -46,6 +46,24 @@ use feature ':5.10';
 
 my $g = api();
 my $failed = 0;
+
+sub hook($) {
+    my $h = shift;
+    my $hook = '';
+    if ($h->{name} eq 'web') {
+        $hook = $h->{config}->{url};
+    } elsif ($h->{name} eq 'irc') {
+        $hook = "irc://" . join(":", grep {$_} values %{$h->{config} });
+    } else {
+        warn "unsupported hook: " . $h->{name};
+    }
+    return $hook;
+}
+sub status($) {
+    my $l = shift;
+
+    return $l->{code} . ":" . $l->{message};
+}
 iterate_repos('startsiden', sub {
         my $r = shift;
         try {
@@ -67,21 +85,18 @@ iterate_repos('startsiden', sub {
                     warn "No last_resp? " . dump($h);
                 } elsif ($ENV{RETEST} and $last_resp->{code} and $last_resp->{code} != 200) {
                     # lets retry!
+                    say "Restesting..." if $ENV{DEBUG};
                     my $test_res = $g->test_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id});
                     $h = $g->get_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id})->body;
                     if ($h->{last_response}->{code} != 200) {
-                        my $hook = '';
-                        if ($h->{name} eq 'web') {
-                            $hook = $h->{config}->{url};
-                        } elsif ($h->{name} eq 'irc') {
-                            $hook = "irc://" . join(":", grep {$_} values %{$h->{config} });
-                        }
-                        say $r->{name} . " ($hook) => " . " :: " . $last_resp->{code} . ": "
-                        . $last_resp->{message};
+                        my $hook = hook($h);
+                        say $r->{name} . " ($hook) => " . " :: " . status($h->{last_response});
                         $failed++;
                     }
+                } elsif ($last_resp->{code}) {
+                    say $r->{name} . " " . hook($h) . " failed: " . status $last_resp;
                 } else {
-                    warn $r->{name} . " >> no idea: " . dump($last_resp);
+                    warn $r->{name} . " " . hook($h) . " >> no idea: " . dump($last_resp);
                 }
             }
         } catch {

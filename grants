@@ -12,7 +12,6 @@ use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 
 my $g = api();
-
 my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
 my @teams = grep { $_->{name} ne 'Owners' } @{ $teams->{teams} };
 {
@@ -30,20 +29,22 @@ $table->captions(['Repo',
         map { substr($_->{name}, - 11) }
         @teams
     ]);
-my $repos = $g->get_organization_repositories(format => 'json', org => 'startsiden')->body;
 
-foreach my $r (sort { $a->{name} cmp $b->{name} } @{ $repos->{repositories}}) {
-    my @row = ($r->{name});
 
-    foreach my $t (@teams) {
-        if (grep { $row[0] eq $_->{name}} @{ $t->{repos}->{repositories}} ) {
-            push @row, "     X";
-        } else {
-            push @row, " ";
+iterate_repos('startsiden', sub {
+        my $r = shift;
+        my @row = ($r->{name});
+
+        foreach my $t (@teams) {
+            if (grep { $row[0] eq $_->{name}} @{ $t->{repos}->{repositories}} ) {
+                push @row, "     X";
+            } else {
+                push @row, " ";
+            }
         }
-    }
 
-    $table->row(@row);
-}
+        $table->row(@row);
+});
+
 
 say $table->draw;

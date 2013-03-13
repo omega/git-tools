@@ -5,10 +5,11 @@ use HTTP::Request::Common;
 use Config::ZOMG;
 use feature ':5.10';
 use Pithub::Repos;
+use Pithub::Orgs::Teams;
 
 use Sub::Exporter -setup => {
-    exports => [ qw/config api get post iterate_repos/ ],
-    groups => [ default => [ qw(config api get post iterate_repos) ] ],
+    exports => [ qw/config api get post iterate_repos team_repos/ ],
+    groups => [ default => [ qw(config api get post iterate_repos team_repos) ] ],
 };
 
 my $c = Config::ZOMG->new( name => 'github_tools' )->load;
@@ -92,6 +93,24 @@ sub iterate_repos {
             $cb->($repo);
         }
     }
+}
+
+sub team_repos {
+    my ($team) = @_;
+    my $skip = config 'skip';
+
+    my @repos;
+
+    my $p = Pithub::Orgs::Teams->new(
+        auto_pagination => 1,
+        prepare_request => \&_mangle_req,
+    );
+
+    my $res = $p->list_repos( team_id => $team );
+    while (my $repo = $res->next) {
+        push(@repos, $repo);
+    }
+    return \@repos;
 }
 
 
