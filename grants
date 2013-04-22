@@ -12,11 +12,11 @@ use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 
 my $g = api();
-my $teams = $g->get_organization_teams(format => 'json', org => 'startsiden')->body;
-my @teams = grep { $_->{name} ne 'Owners' } @{ $teams->{teams} };
+my $teams = $g->list_org_teams(org => 'startsiden')->body;
+my @teams = grep { $_->{name} ne 'Owners' } @{ $teams };
 {
     foreach my $t (@teams) {
-        $t->{repos} = $g->get_team_repositories(format => 'json', team => $t->{id})->body;
+        $t->{repos} = team_repos($t->{id});
     }
 }
 
@@ -36,7 +36,7 @@ iterate_repos('startsiden', sub {
         my @row = ($r->{name});
 
         foreach my $t (@teams) {
-            if (grep { $row[0] eq $_->{name}} @{ $t->{repos}->{repositories}} ) {
+            if (grep { $row[0] eq $_->{name}} @{ $t->{repos}}) {
                 push @row, "     X";
             } else {
                 push @row, " ";
