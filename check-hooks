@@ -45,7 +45,6 @@ use Try::Tiny;
 use feature ':5.10';
 
 my $g = api();
-my $failed = 0;
 
 sub hook($) {
     my $h = shift;
@@ -64,6 +63,14 @@ sub status($) {
 
     return $l->{code} . ":" . $l->{message};
 }
+
+# Tally some stats
+my $failed = 0;
+my $total = 0;
+my $unused = 0;
+my $ok = 0;
+my $unknown = 0;
+
 iterate_repos('startsiden', sub {
         my $r = shift;
         try {
@@ -71,6 +78,7 @@ iterate_repos('startsiden', sub {
             say "repo: " . $r->{name} if $ENV{DEBUG};
             my $hooks = $g->list_repo_hooks(user => 'startsiden', repo => $r->{name})->body;
             foreach my $h (@$hooks) {
+                $total++;
                 warn dump($h) if $ENV{DEBUG};
                 my $last_resp = $h->{last_response};
                 if ($ENV{RETEST} and $last_resp->{status} and $last_resp->{status} eq 'unused') {
@@ -80,6 +88,7 @@ iterate_repos('startsiden', sub {
                     $h = $g->get_repo_hook(user => 'startsiden', repo => $r->{name}, id => $h->{id})->body;
                 }
                 if ($last_resp->{code} and $last_resp->{code} == 200) {
+                    $ok++;
                     # All ok
                 } elsif (!$last_resp->{code} and $last_resp->{status} ne 'unused') {
                     warn "No last_resp? " . dump($h);
@@ -92,10 +101,17 @@ iterate_repos('startsiden', sub {
                         my $hook = hook($h);
                         say $r->{name} . " ($hook) => " . " :: " . status($h->{last_response});
                         $failed++;
+                    } else {
+                        $ok++;
                     }
                 } elsif ($last_resp->{code}) {
+                    $failed++;
                     say $r->{name} . " " . hook($h) . " failed: " . status $last_resp;
+                } elsif ($last_resp->{status} eq 'unused') {
+                    $unused++;
+                    # We just ignore it for now..
                 } else {
+                    $unknown++;
                     warn $r->{name} . " " . hook($h) . " >> no idea: " . dump($last_resp);
                 }
             }
@@ -105,7 +121,7 @@ iterate_repos('startsiden', sub {
     }
 );
 
+warn "total: $total ok: $ok failed: $failed unused: $unused unknown: $unknown";
 if ($failed) {
-    warn "FAILED $failed repo hooks\n";
     exit(1);
 }
