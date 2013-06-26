@@ -78,8 +78,9 @@ sub iterate_repos {
     my $skip = config 'skip';
 
     if (scalar(@ARGV)) {
-        while (scalar(@ARGV)) {
-            $cb->( { name => shift @ARGV } );
+        my @repos = @ARGV;
+        while (scalar(@repos)) {
+            $cb->( { name => shift @repos } );
         }
     } else {
         my $p = Pithub::Repos->new(
