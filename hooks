@@ -23,7 +23,7 @@ my $i = 0;
 
 my $irc_rooms = LoadFile("ircrooms.yaml");
 
-iterate_repos('startsiden', sub {
+iterate_repos(config 'org', sub {
         my $r = shift;
         my @row = ($r->{name});
 
@@ -53,7 +53,7 @@ sub check_repo_hooks {
     my ($api, $repo, $hooks) = @_;
     my @res;
     # Fetch the content first!
-    my $repo_hooks = $g->list_repo_hooks(user => 'startsiden', repo => $repo->{name})->body;
+    my $repo_hooks = $g->list_repo_hooks(user => config 'org', repo => $repo->{name})->body;
 
     $irc_rooms->{$repo->{name}} = '' unless $irc_rooms->{$repo->{name}};
 
@@ -74,7 +74,7 @@ sub check_repo_hooks {
                 ) {
                     # Need to update this one.
                     say "      Events differ, lets update!";
-                    $g->update_repo_hook(user => 'startsiden', repo => $repo->{name},
+                    $g->update_repo_hook(user => config 'org', repo => $repo->{name},
                         id => $h->{id},
                         spore_payload => {
                             name => 'web',
@@ -93,7 +93,7 @@ sub check_repo_hooks {
         unless ($seen) {
             # Need to add a hook then!
             say "    Adding hook: $_";
-            $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
+            $g->add_repo_hook(user => config 'org', repo => $repo->{name},
                 spore_payload => {
                     name => 'web',
                     events => $hook_events,
@@ -106,7 +106,7 @@ sub check_repo_hooks {
         }
         if (not $ircseen and $irc_rooms->{$repo->{name}}) {
             say "    Adding IRC hook, since not added, but have channel name";
-            $g->add_repo_hook(user => 'startsiden', repo => $repo->{name},
+            $g->add_repo_hook(user => config 'org', repo => $repo->{name},
                 spore_payload => {
                     name => 'irc',
                     config => {

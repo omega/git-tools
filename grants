@@ -12,7 +12,7 @@ use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 
 my $g = api();
-my $teams = $g->list_org_teams(org => 'startsiden')->body;
+my $teams = $g->list_org_teams(org => config 'org')->body;
 my @teams = grep { $_->{name} ne 'Owners' } @{ $teams };
 {
     foreach my $t (@teams) {
@@ -31,7 +31,7 @@ $table->captions(['Repo',
     ]);
 
 
-iterate_repos('startsiden', sub {
+iterate_repos(config 'org', sub {
         my $r = shift;
         my @row = ($r->{name});
 

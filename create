@@ -19,13 +19,13 @@ my $name = $ARGV[0] or die "No name given, cannot create";
 
 say "creating: $name";
 
-$g->add_org_repo(org => 'startsiden', spore_payload => {
+$g->add_org_repo(org => config 'org', spore_payload => {
         name => $name,
         private => 1,
         has_issues => 0,
         has_wiki => 0,
     }) &&
-system("./hooks $name") == 0 &&
-system("./fix-grants $name") == 0 &&
+say "  setting hooks" && system("./hooks $name") == 0 &&
+say "  fixing grants" && system("./fix-grants $name") == 0 &&
 
 say "repo creation done!";
