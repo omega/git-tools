@@ -10,7 +10,6 @@ use Text::SimpleTable::AutoWidth;
 use Data::Dump;
 use feature ':5.10';
 
-my $skip = config 'skip';
 my $g = api();
 
 # Lets add all repos to Employees tema
@@ -29,7 +28,6 @@ foreach my $TN (@$TEAMS) {
     iterate_repos(config 'org', sub {
             my $r = shift;
             return if (grep { $r->{name} eq $_->{name} } @{ $team->{_repos} });
-            return if ($skip->{$r->{name}});
             say $r->{name} . "   adding";
             say dd $r if $ENV{SPORE_TRACE};
             my $res = $g->add_team_repo(
