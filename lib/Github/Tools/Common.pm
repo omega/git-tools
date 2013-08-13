@@ -1,15 +1,23 @@
 package GitHub::Tools::Common;
 
+use strict;
+use warnings;
+
 use HTTP::Request::Common;
 
 use Config::ZOMG;
 use feature ':5.10';
 use Pithub::Repos;
 use Pithub::Orgs::Teams;
+use Pithub::Repos::Stats;
+use Pithub::Users;
+use MIME::Base64 qw();
+
+use Data::Dump qw/dd/;
 
 use Sub::Exporter -setup => {
-    exports => [ qw/config api get post iterate_repos team_repos/ ],
-    groups => [ default => [ qw(config api get post iterate_repos team_repos) ] ],
+    exports => [ qw/config api get post iterate_repos team_repos repo_stats user/ ],
+    groups => [ default => [ qw(config api get post iterate_repos team_repos repo_stats user) ] ],
 };
 
 my $c = Config::ZOMG->new( name => 'github_tools' )->load;
@@ -77,22 +85,37 @@ sub iterate_repos {
     my ($org, $cb) = @_;
     my $skip = config 'skip';
 
-    if (scalar(@ARGV)) {
+
+    # Short cut if we have only names.
+    if (scalar(@ARGV) and not grep /\*/, @ARGV) {
         my @repos = @ARGV;
         while (scalar(@repos)) {
-            $cb->( { name => shift @repos } );
+            # Need to fetch this one repo from github, to get propper
+            # datastructre
+            my $p = Pithub::Repos->new(
+                auto_pagination => 1,
+                prepare_request => \&_mangle_req,
+            );
+            my $name = shift @repos;
+            $cb->(  $p->get( user => $org, repo => $name )->first );
         }
-    } else {
-        my $p = Pithub::Repos->new(
-            auto_pagination => 1,
-            prepare_request => \&_mangle_req,
-        );
+        return;
+    }
 
-        my $repos = $p->list(org => $org);
-        while ( my $repo = $repos->next ) {
-            next if $skip->{ $repo->{name} };
-            $cb->($repo);
-        }
+    my $pattern = $ARGV[0] || '.';
+    $pattern =~ s/\*/.*/g;
+    $pattern = qr/$pattern/;
+
+    my $p = Pithub::Repos->new(
+        auto_pagination => 1,
+        prepare_request => \&_mangle_req,
+    );
+
+    my $repos = $p->list(org => $org);
+    while ( my $repo = $repos->next ) {
+        next if $skip->{ $repo->{name} };
+        next unless $repo->{name} =~ $pattern;
+        $cb->($repo);
     }
 }
 
@@ -114,6 +137,45 @@ sub team_repos {
     return \@repos;
 }
 
+sub repo_stats {
+    my ($repo) = @_;
 
+    my $sum_author = sub {
+        my $au = shift;
+        my $sums = { a => 0, c => 0, d => 0 };
+        my @weeks = @{ $au->{weeks} || [] };
+        foreach my $w (@weeks) {
+            $sums->{$_} += $w->{$_} for qw/a c d/;
+        }
+        return $sums;
+    };
+
+    my $p = Pithub::Repos::Stats->new(
+        prepare_request => \&_mangle_req,
+        auto_pagination => 1,
+    );
+    my $res = $p->contributors(
+        user => $repo->{owner}->{login},
+        repo => $repo->{name},
+        wait_for_200 => 3,
+    );
+    my $sums = {};
+    while (my $a = $res->next) {
+        next unless $a->{author};
+        my $name = $a->{author}->{login} or do {
+            dd $a;
+        };
+        my $sum = $sum_author->($a);
+        $sums->{$name} = $sum;
+    }
+    return $sums;
+}
+
+sub user {
+    my ($user) = @_;
+
+    my $p = Pithub::Users->new();
+    $p->get( user => $user )->next;
+}
 
 1;
