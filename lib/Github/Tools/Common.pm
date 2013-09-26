@@ -20,8 +20,10 @@ use Sub::Exporter -setup => {
     groups => [ default => [ qw(config api get post iterate_repos team_repos repo_stats user) ] ],
 };
 
-my $c = Config::ZOMG->new( name => 'github_tools' )->load;
+my ($path) = ($INC{'GitHub/Tools/Common.pm'} =~ m|(.*)GitHub/Tools/Common\.pm|);
+$path =~ s|lib/$||g; #remove end lib if it is there?
 
+my $c = Config::ZOMG->new( name => 'github_tools', path => $path )->load;
 
 sub config($) {
     return $c->{$_[0]};
@@ -147,6 +149,7 @@ sub repo_stats {
         foreach my $w (@weeks) {
             $sums->{$_} += $w->{$_} for qw/a c d/;
         }
+        $sums->{weeks} = \@weeks;
         return $sums;
     };
 
