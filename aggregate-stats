@@ -1,0 +1,36 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.010;
+use GitHub::Tools::Common;
+use JSON::MaybeXS;
+use Data::Dump;
+
+my %authors;
+my %repos;
+
+
+iterate_repos(config 'org', sub {
+        my $r = shift;
+        warn "REPO: " . $r->{name} . "\n";
+        dd $r;
+        my $stats = repo_stats($r);
+
+        $repos{$r->{name}} = $stats;
+
+        foreach my $a (keys %$stats) {
+            my $old = $authors{$a} || {
+                a => 0, c => 0, d => 0
+            };
+            my $sums = $stats->{$a};
+
+            $sums->{$_} += $old->{$_} for qw/a c d/;
+            $authors{$a} = $sums;
+        }
+    }
+);
+
+
+print encode_json(\%repos);
+
+
