@@ -14,7 +14,7 @@ my $g = api();
 
 # Lets add all repos to Employees tema
 my $teams = $g->list_org_teams(org => config 'org')->body;
-my $TEAMS = [qw(Employees Bots)];
+my $TEAMS = $ENV{TEAMS} ? [split /\s+/, $ENV{TEAMS}] : [qw(Employees Bots)];
 foreach my $TN (@$TEAMS) {
     my ($team) = grep { $_->{name} eq $TN } @$teams;
     $team->{_repos} = team_repos($team->{id});
