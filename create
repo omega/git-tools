@@ -4,7 +4,6 @@ use warnings;
 use Github::Tools::Common;
 use Data::Dump;
 use Carp;
-use Net::HTTP::Spore;
 use Try::Tiny;
 use Text::SimpleTable::AutoWidth;
 use Scalar::Util;
@@ -13,13 +12,11 @@ use YAML::XS qw/DumpFile LoadFile/;
 use feature ':5.10';
 
 
-my $g = api();
-
 my $name = $ARGV[0] or die "No name given, cannot create";
 
 say "creating: $name";
 
-$g->add_org_repo(org => config 'org', spore_payload => {
+add_org_repo(org => config 'org', data => {
         name => $name,
         private => 1,
         has_issues => 0,

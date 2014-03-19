@@ -19,13 +19,13 @@ use Data::Dump qw/dd/;
 
 use Sub::Exporter -setup => {
     exports => [ qw/
-        list_org_teams add_team_repo
+        list_org_teams add_team_repo add_org_repo
         list_repo_hooks update_repo_hook add_repo_hook
         config api get post iterate_repos team_repos repo_stats user
         commit_comments set_status list_statuses/ ],
     groups => [
         default => [ qw(
-            list_org_teams add_team_repo
+            list_org_teams add_team_repo add_org_repo
             list_repo_hooks update_repo_hook add_repo_hook
             config api get post iterate_repos team_repos repo_stats user
             commit_comments set_status list_statuses
@@ -114,6 +114,14 @@ sub add_team_repo {
         repo    => $opts{repo},
     );
 }
+
+sub add_org_repo {
+    my %opts = @_;
+    Pithub::Repos->new(
+        prepare_request => \&_mangle_req,
+    )->create(%opts);
+}
+
 
 sub iterate_repos {
     my ($org, $cb) = @_;
