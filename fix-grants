@@ -12,7 +12,7 @@ use feature ':5.10';
 # Lets add all repos to Employees tema
 my $teams = list_org_teams;
 
-my $TEAMS = $ENV{TEAMS} ? [split /\s+/, $ENV{TEAMS}] : [qw(Employees Bots)];
+my $TEAMS = $ENV{TEAMS} ? [split /\s+/, $ENV{TEAMS}] : config 'teams';
 foreach my $TN (@$TEAMS) {
     my ($team) = grep { $_->{name} eq $TN } @$teams;
     $team->{_repos} = team_repos($team->{id});

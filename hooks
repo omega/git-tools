@@ -12,7 +12,7 @@ use YAML::XS qw/DumpFile LoadFile/;
 use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 my $hooks = config 'hooks';
-my $events = config 'events';
+my $events = config 'events' || {};
 
 $table->captions(['Repo', keys %$hooks, 'IRC' ]);
 
@@ -60,7 +60,7 @@ sub check_repo_hooks {
         say " $_" if $ENV{DEBUG};
         # Check if we have this one
         my ($seen, $ircseen);
-        my $hook_events = $events->{$hookname} || [qw(push)];
+        my $hook_events = $events->{$hookname} || [qw(*)];
         foreach my $h (@$repo_hooks) {
             if ($h->{name} eq 'web' and $h->{config}->{url} =~ qr/$_/) {
                 say "    " . $h->{config}->{url} if $ENV{DEBUG};
