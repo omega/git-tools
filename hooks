@@ -4,7 +4,6 @@ use warnings;
 use Github::Tools::Common;
 use Data::Dump;
 use Carp;
-use Net::HTTP::Spore;
 use Try::Tiny;
 use Text::SimpleTable::AutoWidth;
 use Scalar::Util;
@@ -17,7 +16,6 @@ my $events = config 'events';
 
 $table->captions(['Repo', keys %$hooks, 'IRC' ]);
 
-my $g = api();
 
 my $i = 0;
 
@@ -28,7 +26,7 @@ iterate_repos(config 'org', sub {
         my @row = ($r->{name});
 
         say "REPO: " . $r->{name};
-        my @res = check_repo_hooks($g, $r, $hooks);
+        my @res = check_repo_hooks( $r, $hooks);
         foreach (@res) {
             if ($_ == 1) {
                 push(@row, 'X');
@@ -50,10 +48,10 @@ say $table->draw();
 DumpFile("ircrooms.yaml", $irc_rooms);
 
 sub check_repo_hooks {
-    my ($api, $repo, $hooks) = @_;
+    my ($repo, $hooks) = @_;
     my @res;
     # Fetch the content first!
-    my $repo_hooks = $g->list_repo_hooks(user => config 'org', repo => $repo->{name})->body;
+    my $repo_hooks = list_repo_hooks(user => config 'org', repo => $repo->{name});
 
     $irc_rooms->{$repo->{name}} = '' unless $irc_rooms->{$repo->{name}};
 
@@ -74,9 +72,9 @@ sub check_repo_hooks {
                 ) {
                     # Need to update this one.
                     say "      Events differ, lets update!";
-                    $g->update_repo_hook(user => config 'org', repo => $repo->{name},
-                        id => $h->{id},
-                        spore_payload => {
+                    update_repo_hook(user => config 'org', repo => $repo->{name},
+                        hook_id => $h->{id},
+                        data => {
                             name => 'web',
                             events => $hook_events,
                             config => {
@@ -93,8 +91,8 @@ sub check_repo_hooks {
         unless ($seen) {
             # Need to add a hook then!
             say "    Adding hook: $_";
-            $g->add_repo_hook(user => config 'org', repo => $repo->{name},
-                spore_payload => {
+            add_repo_hook(user => config 'org', repo => $repo->{name},
+                data => {
                     name => 'web',
                     events => $hook_events,
                     config => {
@@ -106,8 +104,8 @@ sub check_repo_hooks {
         }
         if (not $ircseen and $irc_rooms->{$repo->{name}}) {
             say "    Adding IRC hook, since not added, but have channel name";
-            $g->add_repo_hook(user => config 'org', repo => $repo->{name},
-                spore_payload => {
+            add_repo_hook(user => config 'org', repo => $repo->{name},
+                data => {
                     name => 'irc',
                     config => {
                         room => $irc_rooms->{$repo->{name}},

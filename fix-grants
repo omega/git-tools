@@ -4,16 +4,14 @@ use warnings;
 use Github::Tools::Common;
 use Data::Dump;
 use Carp;
-use Net::HTTP::Spore;
 use Try::Tiny;
 use Text::SimpleTable::AutoWidth;
 use Data::Dump;
 use feature ':5.10';
 
-my $g = api();
-
 # Lets add all repos to Employees tema
-my $teams = $g->list_org_teams(org => config 'org')->body;
+my $teams = list_org_teams;
+
 my $TEAMS = $ENV{TEAMS} ? [split /\s+/, $ENV{TEAMS}] : [qw(Employees Bots)];
 foreach my $TN (@$TEAMS) {
     my ($team) = grep { $_->{name} eq $TN } @$teams;
@@ -30,12 +28,10 @@ foreach my $TN (@$TEAMS) {
             return if (grep { $r->{name} eq $_->{name} } @{ $team->{_repos} });
             say $r->{name} . "   adding";
             say dd $r if $ENV{SPORE_TRACE};
-            my $res = $g->add_team_repo(
+            my $res = add_team_repo(
                 team => $team->{id},
-                user => $r->{owner}->{login} || config 'org',
                 repo => $r->{name},
-                spore_payload => { },
-            )->body;
+            );
             say dd $res if $ENV{SPORE_TRACE};
         });
 }

@@ -1,61 +1,53 @@
-package GitHub::Tools::Common;
+package Github::Tools::Common;
 
 use strict;
 use warnings;
 
 use HTTP::Request::Common;
-
+use Carp;
 use Config::ZOMG;
 use feature ':5.10';
 use Pithub::Repos;
 use Pithub::Orgs::Teams;
 use Pithub::Repos::Stats;
 use Pithub::Users;
+use Pithub::Repos::Commits;
+use Pithub::Repos::Statuses;
 use MIME::Base64 qw();
 
 use Data::Dump qw/dd/;
 
 use Sub::Exporter -setup => {
-    exports => [ qw/config api get post iterate_repos team_repos repo_stats user/ ],
-    groups => [ default => [ qw(config api get post iterate_repos team_repos repo_stats user) ] ],
+    exports => [ qw/
+        list_org_teams add_team_repo
+        list_repo_hooks update_repo_hook add_repo_hook
+        config api get post iterate_repos team_repos repo_stats user
+        commit_comments set_status list_statuses/ ],
+    groups => [
+        default => [ qw(
+            list_org_teams add_team_repo
+            list_repo_hooks update_repo_hook add_repo_hook
+            config api get post iterate_repos team_repos repo_stats user
+            commit_comments set_status list_statuses
+        )]
+    ],
 };
 
-my ($path) = ($INC{'GitHub/Tools/Common.pm'} =~ m|(.*)GitHub/Tools/Common\.pm|);
+my ($path) = ($INC{'Github/Tools/Common.pm'} =~ m|(.*)Github/Tools/Common\.pm|);
 $path =~ s|lib/$||g; #remove end lib if it is there?
 
+$path ||= '.';
 my $c = Config::ZOMG->new( name => 'github_tools', path => $path )->load;
 
 sub config($) {
     return $c->{$_[0]};
 }
-our $api;
 sub api {
-    return $api if $api;
-    my $g = Net::HTTP::Spore->new_from_specs(
-        '../../other/spore-descriptions/services/github/org3.json',
-        '../../other/spore-descriptions/services/github/repo3.json',
-        {
-            #base_url => 'http://github.com/api/v2/',
-        },
-    );
-    $g->enable('Format::JSON');
-    $g->enable('Auth::Basic',
-        username => config('user') . '',
-        password => config 'token'
-    );
-
-    $api = $g;
-    return $api;
+    Carp::confess "API deprecated";
 }
 
-our $ua;
 sub ua {
-    return $ua if $ua;
-    my $api = api();
-
-    $ua = $api->api_useragent->clone;
-    $ua->cookie_jar( {} );
-    return $ua;
+    Carp::croak "ua deprecated";
 }
 sub _mangle_req {
     my $req = shift;
@@ -67,21 +59,61 @@ sub _mangle_req {
     return $req;
 }
 sub get {
-    my ($url) = @_;
-
-    my $ua = ua();
-    my $req = _mangle_req(GET $url);
-
-    return $ua->request($req);
+    Carp::croak "get deprecated";
 }
-
 sub post {
-    my ($url, $form) = @_;
-    my $ua = ua();
-    my $req = _mangle_req(POST $url, $form );
-    return $ua->request($req);
+    Carp::croak "post deprecated";
 }
 
+sub list_repo_hooks {
+    my %opts = @_;
+    my $hooks = Pithub::Repos::Hooks->new(
+        prepare_request => \&_mangle_req,
+    )->list(%opts);
+    my @hooks;
+    while ( my $hook = $hooks->next ) {
+        push @hooks, $hook;
+    }
+    return wantarray ? @hooks : \@hooks;
+}
+sub update_repo_hook {
+    my %opts = @_;
+    Pithub::Repos::Hooks->new(
+        prepare_request => \&_mangle_req,
+    )->update(%opts);
+}
+
+sub add_repo_hook {
+    my %opts = @_;
+    Pithub::Repos::Hooks->new(
+        prepare_request => \&_mangle_req,
+    )->create(%opts);
+}
+
+
+sub list_org_teams {
+    my $org = shift || config 'org';
+
+    my $teams = Pithub::Orgs::Teams->new(
+        prepare_request => \&_mangle_req,
+    )->list( org => $org );
+
+    my @teams;
+    while ( my $team = $teams->next ) {
+        push @teams, $team;
+    }
+    return wantarray ? @teams : \@teams;
+}
+
+sub add_team_repo {
+    my %opts = @_;
+    Pithub::Orgs::Teams->new(
+        prepare_request => \&_mangle_req,
+    )->add_repo(
+        team_id => $opts{team},
+        repo    => $opts{repo},
+    );
+}
 
 sub iterate_repos {
     my ($org, $cb) = @_;
