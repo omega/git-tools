@@ -107,11 +107,12 @@ sub list_org_teams {
 
 sub add_team_repo {
     my %opts = @_;
+    dd %opts;
     Pithub::Orgs::Teams->new(
         prepare_request => \&_mangle_req,
     )->add_repo(
-        team_id => $opts{team},
-        repo    => $opts{repo},
+        team_id => delete $opts{team},
+        %opts
     );
 }
 

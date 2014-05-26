@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Github::Tools::Common;
-use Data::Dump;
+use Data::Dump::Color;
 use Carp;
 use Try::Tiny;
 use Text::SimpleTable::AutoWidth;
@@ -31,6 +31,7 @@ foreach my $TN (@$TEAMS) {
             my $res = add_team_repo(
                 team => $team->{id},
                 repo => $r->{name},
+                org => config 'org',
             );
             say dd $res if $ENV{SPORE_TRACE};
         });
