@@ -15,9 +15,13 @@ use Text::SimpleTable::AutoWidth;
 use feature ':5.10';
 my $table = Text::SimpleTable::AutoWidth->new();
 
-my $g = api();
-my $teams = $g->list_org_teams(org => config 'org')->body;
-my @teams = grep { $_->{name} ne 'Owners' } @{ $teams };
+my $teams = list_org_teams();
+my @teams = grep {
+    defined( $_->{id} )
+        and
+    ( defined( $_->{name} ) and $_->{name} ne 'Owners' )
+} @{ $teams };
+
 {
     foreach my $t (@teams) {
         $t->{repos} = team_repos($t->{id});
