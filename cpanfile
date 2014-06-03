@@ -1,4 +1,13 @@
 requires 'Text::SimpleTable::AutoWidth';
 requires 'Net::HTTP::Spore';
 requires 'Pithub';
-
+requires 'HTTP::Request::Common';
+requires 'Module::Runtime';
+requires 'Config::Any';
+requires 'LWP::UserAgent';
+requires 'Test::Most';
+requires 'Pithub::Repos::Statuses';
+requires 'Sub::Exporter';
+requires 'Moose', '< 2.1200';
+requires 'MooseX::Types::Moose';
+requires 'Params::Validate';
