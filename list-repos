@@ -1,7 +1,11 @@
 #!/usr/bin/env perl
 use strict; use warnings;
 use feature qw(say);
-use GitHub::Tools::Common;
+
+use FindBin qw($RealBin);
+use lib "$RealBin/lib";
+
+use Github::Tools::Common;
 
 iterate_repos(config 'org', sub {
         my $r = shift;
