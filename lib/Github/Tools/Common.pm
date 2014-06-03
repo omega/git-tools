@@ -21,15 +21,12 @@ use Sub::Exporter -setup => {
     exports => [ qw/
         list_org_teams add_team_repo add_org_repo
         list_repo_hooks update_repo_hook add_repo_hook
-        config api get post iterate_repos team_repos repo_stats user
-        commit_comments set_status list_statuses/ ],
+        config api get post iterate_repos team_repos repo_stats user/ ],
     groups => [
         default => [ qw(
             list_org_teams add_team_repo add_org_repo
             list_repo_hooks update_repo_hook add_repo_hook
-            config api get post iterate_repos team_repos repo_stats user
-            commit_comments set_status list_statuses
-        )]
+            config api get post iterate_repos team_repos repo_stats user)]
     ],
 };
 
