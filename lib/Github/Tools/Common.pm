@@ -37,7 +37,7 @@ my ($path) = ($INC{'Github/Tools/Common.pm'} =~ m|(.*)Github/Tools/Common\.pm|);
 $path =~ s|lib/$||g; #remove end lib if it is there?
 
 $path ||= '.';
-my $c = Config::ZOMG->new( name => 'github_tools', path => $path )->load;
+my $c = Config::ZOMG->new( name => ($ENV{C} or 'github_tools'), path => $path )->load;
 
 sub config($) {
     return $c->{$_[0]};
@@ -128,6 +128,12 @@ sub iterate_repos {
     my ($org, $cb) = @_;
     my $skip = config 'skip';
 
+    unless (ref $org eq 'HASH') {
+        $org = {
+            org => $org
+        };
+    }
+
 
     # Short cut if we have only names.
     if (scalar(@ARGV) and not grep /\*/, @ARGV) {
@@ -140,7 +146,7 @@ sub iterate_repos {
                 prepare_request => \&_mangle_req,
             );
             my $name = shift @repos;
-            $cb->(  $p->get( user => $org, repo => $name )->first );
+            $cb->(  $p->get( %$org, repo => $name )->first );
         }
         return;
     }
@@ -154,9 +160,9 @@ sub iterate_repos {
         prepare_request => \&_mangle_req,
     );
 
-    my $repos = $p->list(org => $org);
+    my $repos = $p->list(%$org);
     while ( my $repo = $repos->next ) {
-        next if $skip->{ $repo->{name} };
+        next if $skip && $skip->{ $repo->{name} };
         next unless $repo->{name} =~ $pattern;
         $cb->($repo);
     }
